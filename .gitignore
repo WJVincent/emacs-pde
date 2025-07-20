@@ -1,0 +1,16 @@
+/auto-save-list/
+/custom.el
+/custom.el~
+/eln-cache/
+/elpa/
+/eshell/
+/init.el~
+/speed-type/
+/tutorial
+/tutorial~
+/transient/
+/url/
+/tramp
+/#*#
+*~
+.#*
