@@ -37,6 +37,13 @@
 (use-package magit
   :ensure t)
 
+;; paredit - S-exp editing package
+(use-package paredit
+  :ensure t
+  :hook (emacs-lisp-mode . paredit-mode) ; autostart in elisp mode
+  :hook (lisp-interaction-mode . paredit-mode) ; autostart in scratch buffer
+  :hook (lisp-mode . paredit-mode)) ; autostart in generic lisp mode
+
 ;;;; ---------------
 ;;;; Emacs Settings
 ;;;; ---------------
