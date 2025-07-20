@@ -33,6 +33,10 @@
   (setq completion-category-defaults nil)
   (setq completion-category-overrides nil))
 
+;; magit best git
+(use-package magit
+  :ensure t)
+
 ;;;; ---------------
 ;;;; Emacs Settings
 ;;;; ---------------
@@ -43,7 +47,7 @@
 ;; turn menu-bar off
 (menu-bar-mode -1)
 
-;; turn scrol-bar off
+;; turn scroll-bar off
 (scroll-bar-mode -1)
  
 ;; enable which key mode
