@@ -44,6 +44,11 @@
   :hook (lisp-interaction-mode . paredit-mode) ; autostart in scratch buffer
   :hook (lisp-mode . paredit-mode)) ; autostart in generic lisp mode
 
+(use-package sly
+  :ensure t
+  :config
+  (setq inferior-lisp-program "/usr/bin/sbcl"))
+
 ;;;; ---------------
 ;;;; Emacs Settings
 ;;;; ---------------
