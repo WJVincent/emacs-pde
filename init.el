@@ -10,9 +10,25 @@
 ;;;; -----------------
 ;;;; Package Settings
 ;;;; -----------------
+
+;; ensure portability between os implementations by prepping package before adding melpa
+(eval-when-compile
+  (require 'package))
+
+(unless (boundp 'package-archives)
+  (require 'package))
+
 ;; enaqble melpa
 (add-to-list 'package-archives
              '("melpa-stable" . "https://stable.melpa.org/packages/") t)
+
+;; Fix for macos pathing issue
+(use-package exec-path-from-shell
+  :ensure t
+  :if (eq system-type 'darwin)
+  :config
+  (exec-path-from-shell-initialize))
+
 ;; theme
 (use-package gruvbox-theme  
   :ensure t
@@ -24,7 +40,6 @@
   :hook (after-init . vertico-mode))
 
 ;; minibuffer annotations
-
 (use-package marginalia
   :ensure t
   :hook (after-init . marginalia-mode))
@@ -40,22 +55,29 @@
 
 ;; magit best git
 (use-package magit
-  :ensure t)
+  :ensure t
+  :defer t)
 
 ;; paredit - S-exp editing package
 (use-package paredit
   :ensure t
+  :defer t
   :hook (emacs-lisp-mode . paredit-mode) ; autostart in elisp mode
   :hook (lisp-interaction-mode . paredit-mode) ; autostart in scratch buffer
   :hook (lisp-mode . paredit-mode)) ; autostart in generic lisp mode
 
 (use-package sly
   :ensure t
+  :defer t
   :config
-  (setq inferior-lisp-program "/usr/bin/sbcl"))
+  (setq inferior-lisp-program
+	(if (eq system-type 'darwin)
+	    "/opt/homebrew/bin/sbcl"
+	    "/usr/bin/sbcl")))
 
 (use-package markdown-mode
   :ensure t
+  :defer t
   :commands (markdown-mode gfm-mode)
   :mode (("README\\.md\\'" . gfm-mode)
 	 ("\\.md\\'" . markdown-mode)
@@ -63,10 +85,12 @@
 
 (use-package fennel-mode
   :ensure t
+  :defer t
   :mode ("\\.fnl\\'" . fennel-mode))
 
 (use-package lua-mode
   :ensure t
+  :defer t
   :mode (("\\.lua\\'" . lua-mode)))
 
 ;;;; ---------------
@@ -83,7 +107,9 @@
 (scroll-bar-mode -1)
 
 ;; turn off gtk title bar
-(add-to-list 'default-frame-alist '(undecorated . t))
+(if (eq system-type 'darwin)
+    (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
+    (add-to-list 'default-frame-alist '(undecorated . t))) ; Keep Fedora undecorated
 
 ;; enable which key mode
 (setq which-key-idle-delay 0.5)
@@ -94,6 +120,50 @@
 
 ;; highlight current line when in gui mode
 (when window-system (global-hl-line-mode t))
+
+;; handle font differences for fedora/mac
+(defun wv/set-font ()
+  "Set the default font for the current system."
+  (let* ((font-name "JetBrains Mono")
+         ;; Mac (Retina) needs larger font size
+         (font-size (if (eq system-type 'darwin) 14 12))
+	 ;; Construct the font string "FontName-Size"
+         (font-spec (format "%s-%d" font-name font-size)))
+    ;; Only set the font if its actually installed on the system
+    (when (member font-name (font-family-list))
+      ;; Apply to current window
+      (set-frame-font font-spec nil t)
+      ;; Apply to template for all future windows
+      (add-to-list 'default-frame-alist `(font . ,font-spec)))))
+
+(wv/set-font)
+
+(defun wv/setup-jetbrains-mono-ligatures ()
+  "Enable comprehensive JetBrains Mono ligatures via native composition."
+  (let ((ligatures 
+         '(
+	   "--" "---" "==" "===" "!=" "!==" "=!=" "=:=" "=/=" "<=" ">="
+	   "&&" "&&&" "&=" "++" "+++" "***" ";;" "!!" "??" "???" "?:" "?."
+	   "?=" "<:" ":<" ":>" ">:" "<:<" "<>" "<<<" ">>>" "<<" ">>" "||"
+	   "-|" "_|_" "|-" "||-" "|=" "||=" "##" "###" "####" "#{" "#[" "]#"
+	   "#(" "#?" "#_" "#_(" "#:" "#!" "#=" "^=" "<$>" "<$" "$>" "<+>"
+	   "<+" "+>" "<*>" "<*" "*>" "</" "</>" "/>" "<!--" "<#--" "-->"
+	   "->" "->>" "<<-" "<-" "<=<" "=<<" "<<=" "<==" "<=>" "<==>" "==>"
+	   "=>" "=>>" ">=>" ">>=" ">>-" ">-" "-<" "-<<" ">->" "<-<" "<-|"
+	   "<=|" "|=>" "|->" "<->" "<<~" "<~~" "<~" "<~>" "~~" "~~>" "~>"
+	   "~-" "-~" "~@" "[||]" "|]" "[|" "|}" "{|" "[<" ">]" "|>" "<|"
+	   "||>" "<||" "|||>" "<|||" "<|>" "..." ".." ".=" "..<" ".?" "::"
+	   ":::" ":=" "::=" ":?" ":?>" "//" "///" "/*" "*/" "/=" "//="
+	   "/==" "@_" "__" "???" ";;;")))
+    
+    ;; This tells Emacs to look for any of the above strings in the ASCII range
+    ;; and let HarfBuzz handle the "shaping" (drawing the ligature)
+    (set-char-table-range composition-function-table
+                          '(#x21 . #x7e)
+                          (list (vector (regexp-opt ligatures) 0 'font-shape-gstring)))))
+
+;; Enable in all programming modes
+(add-hook 'prog-mode-hook #'wv/setup-jetbrains-mono-ligatures);; Apply to all programming modes
 
 ;;;; -------------
 ;;;; Keybinds 
