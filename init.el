@@ -5,10 +5,14 @@
 (when (file-exists-p custom-file)
   (load custom-file))
 
+(setq treesit-language-source-alist
+       '((lua "https://github.com/tree-sitter-grammars/tree-sitter-lua")))
 ;;;; -----------------
 ;;;; Package Settings
 ;;;; -----------------
-
+;; enaqble melpa
+(add-to-list 'package-archives
+             '("melpa-stable" . "https://stable.melpa.org/packages/") t)
 ;; theme
 (use-package gruvbox-theme  
   :ensure t
@@ -20,6 +24,7 @@
   :hook (after-init . vertico-mode))
 
 ;; minibuffer annotations
+
 (use-package marginalia
   :ensure t
   :hook (after-init . marginalia-mode))
@@ -49,6 +54,21 @@
   :config
   (setq inferior-lisp-program "/usr/bin/sbcl"))
 
+(use-package markdown-mode
+  :ensure t
+  :commands (markdown-mode gfm-mode)
+  :mode (("README\\.md\\'" . gfm-mode)
+	 ("\\.md\\'" . markdown-mode)
+	 ("\\.markdown\\'" . markdown-mode)))
+
+(use-package fennel-mode
+  :ensure t
+  :mode ("\\.fnl\\'" . fennel-mode))
+
+(use-package lua-mode
+  :ensure t
+  :mode (("\\.lua\\'" . lua-mode)))
+
 ;;;; ---------------
 ;;;; Emacs Settings
 ;;;; ---------------
@@ -61,7 +81,10 @@
 
 ;; turn scroll-bar off
 (scroll-bar-mode -1)
- 
+
+;; turn off gtk title bar
+(add-to-list 'default-frame-alist '(undecorated . t))
+
 ;; enable which key mode
 (setq which-key-idle-delay 0.5)
 (which-key-mode 1)
@@ -73,10 +96,19 @@
 (when window-system (global-hl-line-mode t))
 
 ;;;; -------------
+;;;; Keybinds 
+;;;; -------------
+
+;; Bind ff-find-other-file in C-Mode
+(with-eval-after-load 'cc-mode
+  (define-key c-mode-base-map (kbd "C-c o") 'ff-find-other-file))
+
+;;;; -------------
 ;;;; Custom elisp 
 ;;;; -------------
 
 ;; load the functions that allow viewing and
 ;; editing the kill ring in a temp buffer
 ;; (C-c k) to launch the buffer 
-(load-file "~/.emacs.d/view-edit-kill-ring.el")
+;; (load-file "~/.emacs.d/view-edit-kill-ring.el")
+
