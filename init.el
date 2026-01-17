@@ -241,18 +241,3 @@
 ;; editing the kill ring in a temp buffer
 ;; (C-c k) to launch the buffer 
 ;; (load-file "~/.emacs.d/view-edit-kill-ring.el")
-
-(defun wv/debug-org-agenda ()
-  "Print the current state of org-custom-agenda-commands to the *Messages* buffer."
-  (interactive) ;; <--- This MUST be here
-  (message "--- Org Agenda Debug ---")
-  (message "Current Value: %S" org-custom-agenda-commands)
-  (message "Is Org Agenda Loaded? %s" (featurep 'org-agenda))
-  (message "Agenda Files: %S" org-agenda-files)
-  (message "------------------------"))
-
-;; Re-bind to C-c D
-(global-set-key (kbd "C-c D") 'wv/debug-org-agenda)
-
-;; Bind it to a key for quick checking
-(global-set-key (kbd "C-c D") 'wv/debug-org-agenda)
