@@ -6,7 +6,15 @@
   (load custom-file))
 
 (setq treesit-language-source-alist
-       '((lua "https://github.com/tree-sitter-grammars/tree-sitter-lua")))
+       '(
+	 (lua "https://github.com/tree-sitter-grammars/tree-sitter-lua")
+	 (c "https://github.com/tree-sitter/tree-sitter-c")
+	 (html "https://github.com/tree-sitter/tree-sitter-html")
+	 (css "https://github.com/tree-sitter/tree-sitter-css")
+	 (make "https://github.com/tree-sitter-grammars/tree-sitter-make")
+	 (org "https://github.com/milisims/tree-sitter-org")
+	 (fennel "https://github.com/alexmozaidze/tree-sitter-fennel")))
+
 ;;;; -----------------
 ;;;; Package Settings
 ;;;; -----------------
@@ -93,6 +101,14 @@
   :defer t
   :mode (("\\.lua\\'" . lua-mode)))
 
+
+;; prettify org mode
+(use-package org-modern
+  :ensure t
+  :hook (org-mode . org-modern-mode)
+  :hook (org-mode . org-indent-mode)
+  :hook (org-agenda-finalize . org-modern-agenda))
+
 ;;;; ---------------
 ;;;; Emacs Settings
 ;;;; ---------------
@@ -106,10 +122,16 @@
 ;; turn scroll-bar off
 (scroll-bar-mode -1)
 
+;; turn on column numbers
+(column-number-mode 1)
+
+;; set org agenda files
+(setq org-agenda-files '("/home/wv/Documents/coding/city-builder/market_research.org"))
+
 ;; turn off gtk title bar
 (if (eq system-type 'darwin)
     (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
-    (add-to-list 'default-frame-alist '(undecorated . t))) ; Keep Fedora undecorated
+  (add-to-list 'default-frame-alist '(undecorated . t))) ; Keep Fedora undecorated
 
 ;; enable which key mode
 (setq which-key-idle-delay 0.5)
@@ -172,6 +194,44 @@
 ;; Bind ff-find-other-file in C-Mode
 (with-eval-after-load 'cc-mode
   (define-key c-mode-base-map (kbd "C-c o") 'ff-find-other-file))
+(global-set-key (kbd "C-c a") 'org-agenda)
+(global-set-key (kbd "C-c c") 'org-capture)
+
+;;;; -----------------------
+;;;; Org Capture Templates
+;;;; -----------------------
+
+(setq org-capture-templates
+      '(("g" "Game Research" entry (file+headline "/home/wv/Documents/coding/city-builder/market_research.org" "Market Research")
+         "* %^{Game Title} %^g
+:PROPERTIES:
+:OWNED: %^{Owned?|[ ]|[X]}
+:PROGRESS: %^{Progress|Backlog|In Progress|HOURS_100}
+:STEAM_RATING: %^{Rating|Overwhelmingly Positive|Very Positive|Positive|Mixed|Negative}
+:END:
+** UI Choices%?
+** Common Negative Reviews
+** Common Positive Reviews
+** Personal Thoughts
+")))
+
+;;;; -----------------------
+;;;; Org Agenda Commands
+;;;; -----------------------
+
+;; Layer 1: Set the variable immediately
+(setq org-custom-agenda-commands
+      '(("r" "Research Dashboard"
+         ((tags "OWNED=\"[X]\"+PROGRESS=\"HOURS_100\""
+                ((org-agenda-overriding-header "Deep Dive Analysis (100+ Hours played)")))
+          (tags "OWNED=\"[X]\"+PROGRESS=\"Backlog\""
+                ((org-agenda-overriding-header "Unplayed Backlog")))
+          (tags "STEAM_RATING=\"Overwhelmingly Positive\""
+                ((org-agenda-overriding-header "Top Rated Games")))))))
+
+;; Layer 2: Force org-agenda to recognize the change after it finishes loading
+(with-eval-after-load 'org-agenda
+  (setq org-agenda-custom-commands org-custom-agenda-commands))
 
 ;;;; -------------
 ;;;; Custom elisp 
@@ -182,3 +242,17 @@
 ;; (C-c k) to launch the buffer 
 ;; (load-file "~/.emacs.d/view-edit-kill-ring.el")
 
+(defun wv/debug-org-agenda ()
+  "Print the current state of org-custom-agenda-commands to the *Messages* buffer."
+  (interactive) ;; <--- This MUST be here
+  (message "--- Org Agenda Debug ---")
+  (message "Current Value: %S" org-custom-agenda-commands)
+  (message "Is Org Agenda Loaded? %s" (featurep 'org-agenda))
+  (message "Agenda Files: %S" org-agenda-files)
+  (message "------------------------"))
+
+;; Re-bind to C-c D
+(global-set-key (kbd "C-c D") 'wv/debug-org-agenda)
+
+;; Bind it to a key for quick checking
+(global-set-key (kbd "C-c D") 'wv/debug-org-agenda)
