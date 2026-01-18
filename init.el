@@ -6,14 +6,14 @@
   (load custom-file))
 
 (setq treesit-language-source-alist
-       '(
-	 (lua "https://github.com/tree-sitter-grammars/tree-sitter-lua")
-	 (c "https://github.com/tree-sitter/tree-sitter-c")
-	 (html "https://github.com/tree-sitter/tree-sitter-html")
-	 (css "https://github.com/tree-sitter/tree-sitter-css")
-	 (make "https://github.com/tree-sitter-grammars/tree-sitter-make")
-	 (org "https://github.com/milisims/tree-sitter-org")
-	 (fennel "https://github.com/alexmozaidze/tree-sitter-fennel")))
+      '(
+	(lua "https://github.com/tree-sitter-grammars/tree-sitter-lua")
+	(c "https://github.com/tree-sitter/tree-sitter-c")
+	(html "https://github.com/tree-sitter/tree-sitter-html")
+	(css "https://github.com/tree-sitter/tree-sitter-css")
+	(make "https://github.com/tree-sitter-grammars/tree-sitter-make")
+	(org "https://github.com/milisims/tree-sitter-org")
+	(fennel "https://github.com/alexmozaidze/tree-sitter-fennel")))
 
 ;;;; -----------------
 ;;;; Package Settings
@@ -30,10 +30,9 @@
 (add-to-list 'package-archives
              '("melpa-stable" . "https://stable.melpa.org/packages/") t)
 
-;; Fix for macos pathing issue
+;; Fix pathing issue
 (use-package exec-path-from-shell
   :ensure t
-  :if (eq system-type 'darwin)
   :config
   (exec-path-from-shell-initialize))
 
@@ -125,6 +124,9 @@
 ;; turn on column numbers
 (column-number-mode 1)
 
+;; turn on line numbers
+(global-display-line-numbers-mode 1)
+
 ;; set org agenda files
 (setq org-agenda-files '("/home/wv/Documents/coding/city-builder/market_research.org"))
 
@@ -136,6 +138,9 @@
 ;; enable which key mode
 (setq which-key-idle-delay 0.5)
 (which-key-mode 1)
+
+;; put cursor in help buffer when spawned
+(setq help-window-select t)
 
 ;; use y-n instead of yes-no for confirmation prompts
 (setq use-short-answers t)
@@ -206,10 +211,10 @@
          "* %^{Game Title} %^g
 :PROPERTIES:
 :OWNED: %^{Owned?|[ ]|[X]}
-:PROGRESS: %^{Progress|Backlog|In Progress|HOURS_100}
-:STEAM_RATING: %^{Rating|Overwhelmingly Positive|Very Positive|Positive|Mixed|Negative}
+:PROGRESS: %^{Progress|BACKLOG|IN_PROGRESS|HOURS_100}
+:STEAM_RATING: %^{Rating|Overwhelmingly Positive|Very Positive|Positive|Mostly Positive|Mixed|Mostly Negative|Negative}
 :END:
-** UI Choices%?
+** UI Choices
 ** Common Negative Reviews
 ** Common Positive Reviews
 ** Personal Thoughts
@@ -224,7 +229,7 @@
       '(("r" "Research Dashboard"
          ((tags "OWNED=\"[X]\"+PROGRESS=\"HOURS_100\""
                 ((org-agenda-overriding-header "Deep Dive Analysis (100+ Hours played)")))
-          (tags "OWNED=\"[X]\"+PROGRESS=\"Backlog\""
+          (tags "OWNED=\"[X]\"+PROGRESS=\"BACKLOG\""
                 ((org-agenda-overriding-header "Unplayed Backlog")))
           (tags "STEAM_RATING=\"Overwhelmingly Positive\""
                 ((org-agenda-overriding-header "Top Rated Games")))))))
@@ -241,3 +246,13 @@
 ;; editing the kill ring in a temp buffer
 ;; (C-c k) to launch the buffer 
 ;; (load-file "~/.emacs.d/view-edit-kill-ring.el")
+
+(defun wv/org-show-two-levels ()
+  "Show the first two levels of headings in the current Org buffer."
+  (interactive)
+  (org-content 2))
+
+(add-hook 'org-mode-hook
+  (lambda ()
+    ;; Using kbd ensures the key sequence is parsed correctly
+    (define-key org-mode-map (kbd "C-c <backtab>") 'wv/org-show-two-levels)))
