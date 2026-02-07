@@ -56,7 +56,7 @@
 (use-package orderless
   :ensure t
   :config
-  (setq completion-styles '(orderless basic)) ; set completion style to use orderless
+  (setq completion-styles '(orderless flex)) ; set completion style to use orderless
   (setq completion-category-defaults nil)
   (setq completion-category-overrides nil))
 
@@ -131,9 +131,9 @@
 (setq org-agenda-files '("/home/wv/Documents/coding/city-builder/market_research.org"))
 
 ;; turn off gtk title bar
-(if (eq system-type 'darwin)
-    (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
-  (add-to-list 'default-frame-alist '(undecorated . t))) ; Keep Fedora undecorated
+;; (if (eq system-type 'darwin)
+;;     (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
+;;   (add-to-list 'default-frame-alist '(undecorated . t))) ; Keep Fedora undecorated
 
 ;; enable which key mode
 (setq which-key-idle-delay 0.5)
@@ -199,21 +199,26 @@
 ;; Bind ff-find-other-file in C-Mode
 (with-eval-after-load 'cc-mode
   (define-key c-mode-base-map (kbd "C-c o") 'ff-find-other-file))
+
+;; org agenda binds
 (global-set-key (kbd "C-c a") 'org-agenda)
 (global-set-key (kbd "C-c c") 'org-capture)
+
+;; bind ibuffer for when its easier than the minibuffer
+(global-set-key (kbd "C-c B") 'ibuffer)
 
 ;;;; -----------------------
 ;;;; Org Capture Templates
 ;;;; -----------------------
 
 (setq org-capture-templates
-      '(("g" "Game Research" entry (file+headline "/home/wv/Documents/coding/city-builder/market_research.org" "Market Research")
+      '(("g" "Game Research" entry (file+headline "/home/wv/Documents/coding/city-builder/docs_internal/market_research.org" "Market Research")
          "* %^{Game Title} %^g
 :PROPERTIES:
 :OWNED: %^{Owned?|[ ]|[X]}
 :PROGRESS: %^{Progress|BACKLOG|IN_PROGRESS|HOURS_100}
 :STEAM_RATING: %^{Rating|Overwhelmingly Positive|Very Positive|Positive|Mostly Positive|Mixed|Mostly Negative|Negative}
-:END:
+:END:%?
 ** UI Choices
 ** Common Negative Reviews
 ** Common Positive Reviews
