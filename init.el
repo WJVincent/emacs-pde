@@ -6,6 +6,7 @@
 
 ;; Load custom file
 (setq custom-file "~/.emacs.d/custom.el")
+;; load the custom file after other packages
 (when (file-exists-p custom-file)
   (load custom-file))
 
@@ -14,6 +15,12 @@
 (unless (server-running-p)
   (server-start))
 
+;; Prevent Org's parser from crashing in non-Org buffers (9.7.11 bug)
+(advice-add 'org-element-at-point :around
+            (lambda (orig-fn &rest args)
+              (if (derived-mode-p 'org-mode)
+                  (apply orig-fn args)
+                (ignore))))
 ;;;; ----------------
 ;;;; Tree-sitter
 ;;;; ----------------
@@ -173,28 +180,6 @@
 	  ("^\\*sly-db" :regexp t :height 0.4 :noselect nil :stick t)
 	  ("^\\*sly-description" :regexp t :height 0.4 :noselect nil :stick t))))
 
-;; LLM chat
-(use-package gptel
-  :ensure t
-  :custom-face
-  (gptel-context-highlight-face ((t (:background nil :inherit nil))))
-  :config
-  (let ((gemini-be (gptel-make-gemini "Gemini"
-                     :key (lambda ()
-                            (auth-source-pick-first-password
-                             :host "api.google.com"
-                             :user "apikey"))
-                     :models '(gemini-2.5-flash gemini-3-pro)
-                     :stream t))
-        (ollama-be (gptel-make-ollama "Ollama"
-                     :host "localhost:11434"
-                     :stream t
-                     :models '(qwen3-coder:30b
-                               qwen3-coder-next:latest
-                               deepseek-coder-v2:latest))))
-    (setq-default gptel-backend ollama-be))
-  (setq gptel-rewrite-default-action 'diff))
-
 ;; Terminal emulator
 (use-package vterm
   :ensure t
@@ -208,6 +193,10 @@
   :config
   (claude-code-ide-emacs-tools-setup))
 
+;; keystroke viewer
+(use-package command-log-mode
+  :ensure t)
+
 ;;;; ----------------
 ;;;; UI
 ;;;; ----------------
@@ -217,6 +206,12 @@
 (scroll-bar-mode -1)
 (column-number-mode 1)
 (global-display-line-numbers-mode 1)
+
+;; turn off gtk title bar
+(if (eq system-type 'darwin)
+    (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
+  (add-to-list 'default-frame-alist '(undecorated . t))) ; Keep Fedora undecorated
+
 (when window-system (global-hl-line-mode t))
 
 (defun wv/set-font ()
@@ -228,7 +223,12 @@
       (set-frame-font font-spec nil t)
       (add-to-list 'default-frame-alist `(font . ,font-spec)))))
 
-(wv/set-font)
+(if (daemonp)
+    (add-hook 'after-make-frame-functions
+              (lambda (frame)
+                (with-selected-frame frame
+                  (wv/set-font))))
+  (wv/set-font))
 
 (defun wv/setup-jetbrains-mono-ligatures ()
   "Enable comprehensive JetBrains Mono ligatures via native composition."
@@ -264,6 +264,8 @@
 (setq which-key-idle-delay 0.5)
 (which-key-mode 1)
 
+(windmove-default-keybindings)
+
 ;; Show eldoc in a dedicated buffer instead of the minibuffer
 (setq eldoc-display-functions '(eldoc-display-in-buffer))
 
@@ -283,6 +285,20 @@
 ;; Add local info dir
 (add-to-list 'Info-directory-list "~/.info/")
 
+;; controls for popup buffers
+(setq display-buffer-alist
+      '(("\\*sly-db.*\\*"
+         (display-buffer-in-side-window)
+         (side . bottom)
+         (slot . 0)
+         (window-height . 0.3)
+         (window-parameters . ((no-delete-other-windows . t)
+                               (preserve-visibility . t))))))
+
+;; auto-center more conservatively on pane resize
+(setq scroll-step 1
+      scroll-conservatively 101
+      scroll-margin 0)
 
 ;;;; ----------------
 ;;;; Keybindings
@@ -312,40 +328,40 @@
 ;;;; Org Mode
 ;;;; ----------------
 
-(setq org-agenda-files '("/home/wv/Documents/coding/city-builder/market_research.org"))
+;; (setq org-agenda-files '("/home/wv/Documents/coding/city-builder/market_research.org"))
 
-(setq org-capture-templates
-      '(("g" "Game Research"
-         entry
-         (file+headline "/home/wv/Documents/coding/city-builder/docs_internal/market_research.org"
-                        "Market Research")
-         "* %^{Game Title} %^g
-:PROPERTIES:
-:OWNED: %^{Owned?|[ ]|[X]}
-:PROGRESS: %^{Progress|BACKLOG|IN_PROGRESS|HOURS_100}
-:STEAM_RATING: %^{Rating|Overwhelmingly Positive|Very Positive|Positive|Mostly Positive|Mixed|Mostly Negative|Negative}
-:END:%?
-** UI Choices
-** Common Negative Reviews
-** Common Positive Reviews
-** Personal Thoughts
-")))
+;; (setq org-capture-templates
+;;       '(("g" "Game Research"
+;;          entry
+;;          (file+headline "/home/wv/Documents/coding/city-builder/docs_internal/market_research.org"
+;;                         "Market Research")
+;;          "* %^{Game Title} %^g
+;; :PROPERTIES:
+;; :OWNED: %^{Owned?|[ ]|[X]}
+;; :PROGRESS: %^{Progress|BACKLOG|IN_PROGRESS|HOURS_100}
+;; :STEAM_RATING: %^{Rating|Overwhelmingly Positive|Very Positive|Positive|Mostly Positive|Mixed|Mostly Negative|Negative}
+;; :END:%?
+;; ** UI Choices
+;; ** Common Negative Reviews
+;; ** Common Positive Reviews
+;; ** Personal Thoughts
+;; ")))
 
-(setq org-custom-agenda-commands
-      '(("r" "Research Dashboard"
-         ((tags "OWNED=\"[X]\"+PROGRESS=\"HOURS_100\""
-                ((org-agenda-overriding-header "Deep Dive Analysis (100+ Hours played)")))
-          (tags "OWNED=\"[X]\"+PROGRESS=\"BACKLOG\""
-                ((org-agenda-overriding-header "Unplayed Backlog")))
-          (tags "STEAM_RATING=\"Overwhelmingly Positive\""
-                ((org-agenda-overriding-header "Top Rated Games")))))))
+;; (setq org-custom-agenda-commands
+;;       '(("r" "Research Dashboard"
+;;          ((tags "OWNED=\"[X]\"+PROGRESS=\"HOURS_100\""
+;;                 ((org-agenda-overriding-header "Deep Dive Analysis (100+ Hours played)")))
+;;           (tags "OWNED=\"[X]\"+PROGRESS=\"BACKLOG\""
+;;                 ((org-agenda-overriding-header "Unplayed Backlog")))
+;;           (tags "STEAM_RATING=\"Overwhelmingly Positive\""
+;;                 ((org-agenda-overriding-header "Top Rated Games")))))))
 
-(with-eval-after-load 'org-agenda
-  (setq org-agenda-custom-commands org-custom-agenda-commands))
+;; (with-eval-after-load 'org-agenda
+;;   (setq org-agenda-custom-commands org-custom-agenda-commands))
 
-(add-hook 'org-mode-hook
-          (lambda ()
-            (define-key org-mode-map (kbd "C-c <backtab>") 'wv/org-show-two-levels)))
+;; (add-hook 'org-mode-hook
+;;           (lambda ()
+;;             (define-key org-mode-map (kbd "C-c <backtab>") 'wv/org-show-two-levels)))
 
 ;;;; ----------------
 ;;;; Custom Functions
@@ -369,6 +385,12 @@
 (defun vterm-recenter-top (&rest args)
   "Recenter the vterm buffer to the top when called from the shell."
   (recenter 1))
+
+(defun wv/org-insert-src-block (lang)
+  "Insert a source block of a given LANG."
+  (interactive "sLanguage: ")
+  (insert (format "#+begin_src %s\n\n#+end_src" lang))
+  (forward-line -1))
 
 ;;;; ----------------
 ;;;; Language Support
