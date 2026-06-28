@@ -84,6 +84,11 @@
   :ensure t
   :config (exec-path-from-shell-initialize))
 
+;; Adaptive GC — raise the threshold while working, collect when idle
+(use-package gcmh
+  :ensure t
+  :config (gcmh-mode 1))
+
 ;; Theme
 (use-package gruvbox-theme
   :ensure t
@@ -107,10 +112,51 @@
   (setq completion-category-defaults nil)
   (setq completion-category-overrides nil))
 
+;; Search/navigation commands built on completing-read (preview + filtering)
+(use-package consult
+  :ensure t
+  :bind (("C-x b" . consult-buffer)        ; enhanced buffer switcher
+         ("M-y"   . consult-yank-pop)       ; browse the kill ring
+         ("M-g g" . consult-goto-line)
+         ("M-g i" . consult-imenu)
+         ("M-g f" . consult-flymake)
+         ("M-s l" . consult-line)           ; search lines in this buffer
+         ("M-s L" . consult-line-multi)     ; ...across all buffers
+         ("M-s r" . consult-ripgrep)        ; project-wide search
+         ("M-s g" . consult-grep))
+  :init
+  ;; Route xref (find-references etc.) through consult's previewing UI
+  (setq xref-show-xrefs-function       #'consult-xref
+        xref-show-definitions-function #'consult-xref))
+
+;; Context actions on the thing at point / a minibuffer candidate
+(use-package embark
+  :ensure t
+  :bind (("C-."   . embark-act)
+         ("C-h B" . embark-bindings))
+  :init
+  ;; C-h after a prefix lists keys via completing-read instead of a help buffer
+  (setq prefix-help-command #'embark-prefix-help-command))
+
+;; Bridge embark and consult — e.g. embark-export a search to an editable buffer
+(use-package embark-consult
+  :ensure t
+  :after (embark consult)
+  :hook (embark-collect-mode . consult-preview-at-point-mode))
+
 ;; Git frontend
 (use-package magit
   :ensure t
   :defer t)
+
+;; Show git changes in the fringe, live, and keep them synced with magit
+(use-package diff-hl
+  :ensure t
+  :hook ((magit-pre-refresh  . diff-hl-magit-pre-refresh)
+         (magit-post-refresh . diff-hl-magit-post-refresh))
+  :config
+  (global-diff-hl-mode 1)
+  (diff-hl-flydiff-mode 1))
 
 ;; Structural S-expression editing
 (use-package paredit
@@ -167,7 +213,18 @@
   (corfu-quit-at-boundary nil)
   (corfu-quit-no-match t)
   :init
-  (global-corfu-mode))
+  (global-corfu-mode)
+  :config
+  ;; Show the highlighted candidate's docs in a side popup
+  (setq corfu-popupinfo-delay '(0.5 . 0.2))
+  (corfu-popupinfo-mode 1))
+
+;; Extra completion-at-point sources (file paths, dabbrev) for corfu
+(use-package cape
+  :ensure t
+  :init
+  (add-hook 'completion-at-point-functions #'cape-file)
+  (add-hook 'completion-at-point-functions #'cape-dabbrev))
 
 ;; Better popup window management (see also `display-buffer-alist' below)
 (use-package popwin
@@ -209,6 +266,32 @@
 (use-package expand-region
   :ensure t
   :bind ("C-=" . er/expand-region))
+
+;; Jump to any visible position by typing a few chars then a hint label
+(use-package avy
+  :ensure t
+  :bind (("C-;" . avy-goto-char-timer)
+         :map isearch-mode-map
+         ("C-'" . avy-isearch)))           ; label current isearch matches
+
+;; Richer *Help* buffers (source, references, callers)
+(use-package helpful
+  :ensure t
+  :bind (([remap describe-function] . helpful-callable)
+         ([remap describe-variable] . helpful-variable)
+         ([remap describe-key]      . helpful-key)
+         ([remap describe-command]  . helpful-command)
+         ([remap describe-symbol]   . helpful-symbol)))
+
+;; Depth-colored parentheses
+(use-package rainbow-delimiters
+  :ensure t
+  :hook (prog-mode . rainbow-delimiters-mode))
+
+;; Render color literals (#aabbcc, rgb()) in their color; on-demand elsewhere
+(use-package rainbow-mode
+  :ensure t
+  :hook ((css-ts-mode scss-mode) . rainbow-mode))
 
 ;;;; ----------------
 ;;;; UI
@@ -279,6 +362,16 @@
 (which-key-mode 1)
 
 (windmove-default-keybindings)
+
+;; Built-in quality-of-life modes
+(savehist-mode 1)         ; persist minibuffer history across sessions
+(recentf-mode 1)          ; track recently opened files (feeds consult-buffer)
+(save-place-mode 1)       ; restore point when reopening a file
+(repeat-mode 1)           ; repeat prefixed commands with the last key
+(delete-selection-mode 1) ; typing replaces the active region
+
+;; Larger read chunks speed up LSP (eglot) throughput
+(setq read-process-output-max (* 1024 1024))
 
 ;; Show eldoc in a dedicated buffer instead of the minibuffer
 (setq eldoc-display-functions '(eldoc-display-in-buffer))
@@ -398,6 +491,12 @@
 ;;;; ----------------
 
 ;;; Formatting & indentation (generic) ------------------------------
+
+;; eglot tuning — autoshutdown idle servers, skip the event log for perf,
+;; and let xref jump into out-of-project files the server points at.
+(setq eglot-autoshutdown t
+      eglot-events-buffer-config '(:size 0 :format full)
+      eglot-extend-to-xref t)
 
 ;; C-c f formats and saves in every eglot-managed buffer.
 (with-eval-after-load 'eglot
