@@ -218,12 +218,14 @@
 (use-package agent-shell
   :ensure t)
 
-;; Haystack
-(add-to-list 'load-path "~/Documents/coding/elisp/haystack")
-(require 'haystack)
-(setq haystack-notes-directory "~/Documents/notes")
-(define-key global-map (kbd "C-c h") haystack-prefix-map)
-(which-key-add-key-based-replacements "C-c h" "haystack")
+;; Haystack — in-progress local project, only present on some machines
+(let ((haystack-dir "~/Documents/coding/elisp/haystack"))
+  (when (file-directory-p haystack-dir)
+    (add-to-list 'load-path haystack-dir)
+    (when (require 'haystack nil t)
+      (setq haystack-notes-directory "~/Documents/notes")
+      (define-key global-map (kbd "C-c h") haystack-prefix-map)
+      (which-key-add-key-based-replacements "C-c h" "haystack"))))
 
 ;; hledger
 (with-eval-after-load 'hledger-mode
@@ -406,7 +408,9 @@
 ;;;; Custom Functions
 ;;;; ----------------
 
-(load-file "~/.emacs.d/wv-novel.el")
+;; wv-novel — in-progress local project, only present on some machines
+(when (file-exists-p "~/.emacs.d/wv-novel.el")
+  (load-file "~/.emacs.d/wv-novel.el"))
 
 (defun wv/org-show-two-levels ()
   "Show the first two levels of headings in the current Org buffer."
