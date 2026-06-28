@@ -40,7 +40,7 @@
         (org    "https://github.com/milisims/tree-sitter-org")
         (fennel "https://github.com/alexmozaidze/tree-sitter-fennel")
         (rust   "https://github.com/tree-sitter/tree-sitter-rust")
-	(javascript "https://github.com/tree-sitter/tree-sitter-javascript")))
+        (javascript "https://github.com/tree-sitter/tree-sitter-javascript")))
 
 ;;;; ----------------
 ;;;; Package Setup
@@ -148,11 +148,8 @@
   :hook (org-mode            . org-indent-mode)
   :hook (org-agenda-finalize . org-modern-agenda))
 
-;; C#
-(use-package csharp-mode
-  :ensure t
-  :config
-  (add-to-list 'auto-mode-alist '("\\.cs\\'" . csharp-ts-mode)))
+;; C# — csharp-ts-mode is built-in (Emacs 29+); no external package needed
+(add-to-list 'auto-mode-alist '("\\.cs\\'" . csharp-ts-mode))
 
 ;; In-buffer autocompletion
 (use-package corfu
@@ -161,10 +158,9 @@
   (corfu-auto t)
   (corfu-cycle t)
   (corfu-quit-at-boundary nil)
+  (corfu-quit-no-match t)
   :init
   (global-corfu-mode))
-
-(setq corfu-quit-no-match t)
 
 ;; Rust
 (use-package rust-mode
@@ -189,8 +185,8 @@
           ("*Warnings*"              :position bottom :height 0.3 :noselect t)
           ("*eglot-help*"            :position bottom :height 0.4 :noselect nil :stick t)
           ("^\\*Flymake diagnostics" :regexp t :position bottom :height 0.4 :noselect nil :stick t)
-	  ("^\\*sly-db" :regexp t :height 0.4 :noselect nil :stick t)
-	  ("^\\*sly-description" :regexp t :height 0.4 :noselect nil :stick t))))
+          ("^\\*sly-db" :regexp t :height 0.4 :noselect nil :stick t)
+          ("^\\*sly-description" :regexp t :height 0.4 :noselect nil :stick t))))
 
 ;; Terminal emulator
 (use-package vterm
@@ -210,11 +206,6 @@
   :ensure t)
 
 ;; agent shell
-(eval-when-compile
-  (require 'json)
-  (require 'map)
-  (require 'org))
-
 (use-package agent-shell
   :ensure t)
 
@@ -366,45 +357,6 @@
   (define-key sly-mode-map (kbd "C-h d") 'sly-documentation))
 
 ;;;; ----------------
-;;;; Org Mode
-;;;; ----------------
-
-;; (setq org-agenda-files '("/home/wv/Documents/coding/city-builder/market_research.org"))
-
-;; (setq org-capture-templates
-;;       '(("g" "Game Research"
-;;          entry
-;;          (file+headline "/home/wv/Documents/coding/city-builder/docs_internal/market_research.org"
-;;                         "Market Research")
-;;          "* %^{Game Title} %^g
-;; :PROPERTIES:
-;; :OWNED: %^{Owned?|[ ]|[X]}
-;; :PROGRESS: %^{Progress|BACKLOG|IN_PROGRESS|HOURS_100}
-;; :STEAM_RATING: %^{Rating|Overwhelmingly Positive|Very Positive|Positive|Mostly Positive|Mixed|Mostly Negative|Negative}
-;; :END:%?
-;; ** UI Choices
-;; ** Common Negative Reviews
-;; ** Common Positive Reviews
-;; ** Personal Thoughts
-;; ")))
-
-;; (setq org-custom-agenda-commands
-;;       '(("r" "Research Dashboard"
-;;          ((tags "OWNED=\"[X]\"+PROGRESS=\"HOURS_100\""
-;;                 ((org-agenda-overriding-header "Deep Dive Analysis (100+ Hours played)")))
-;;           (tags "OWNED=\"[X]\"+PROGRESS=\"BACKLOG\""
-;;                 ((org-agenda-overriding-header "Unplayed Backlog")))
-;;           (tags "STEAM_RATING=\"Overwhelmingly Positive\""
-;;                 ((org-agenda-overriding-header "Top Rated Games")))))))
-
-;; (with-eval-after-load 'org-agenda
-;;   (setq org-agenda-custom-commands org-custom-agenda-commands))
-
-;; (add-hook 'org-mode-hook
-;;           (lambda ()
-;;             (define-key org-mode-map (kbd "C-c <backtab>") 'wv/org-show-two-levels)))
-
-;;;; ----------------
 ;;;; Custom Functions
 ;;;; ----------------
 
@@ -441,9 +393,9 @@
   "Toggle between light/dark version of Gruvbox Medium"
   (interactive)
   (let* ((old-theme (car custom-enabled-themes))
-	(new-theme (if (eq old-theme 'gruvbox-light-medium)
-		       'gruvbox-dark-medium
-		       'gruvbox-light-medium)))
+         (new-theme (if (eq old-theme 'gruvbox-light-medium)
+                        'gruvbox-dark-medium
+                      'gruvbox-light-medium)))
     (mapc #'disable-theme custom-enabled-themes)
     (load-theme new-theme t)))
 
