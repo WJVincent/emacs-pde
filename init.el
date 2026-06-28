@@ -61,6 +61,10 @@
 (unless (and (boundp 'package-archive-contents) package-archive-contents)
   (package-refresh-contents))
 
+(when (eq system-type 'gnu/linux)
+  (setenv "SSH_AUTH_SOCK"
+          (format "/run/user/%d/gcr/ssh" (user-uid))))
+
 ;;;; ----------------
 ;;;; Packages
 ;;;; ----------------
@@ -73,7 +77,7 @@
 ;; Theme
 (use-package gruvbox-theme
   :ensure t
-  :config (load-theme 'gruvbox-dark-medium t))
+  :config (load-theme 'gruvbox-light-medium t))
 
 ;; Vertical minibuffer layout
 (use-package vertico
@@ -160,6 +164,8 @@
   :init
   (global-corfu-mode))
 
+(setq corfu-quit-no-match t)
+
 ;; Rust
 (use-package rust-mode
   :ensure t
@@ -202,6 +208,22 @@
 ;; keystroke viewer
 (use-package command-log-mode
   :ensure t)
+
+;; agent shell
+(eval-when-compile
+  (require 'json)
+  (require 'map)
+  (require 'org))
+
+(use-package agent-shell
+  :ensure t)
+
+;; Haystack
+(add-to-list 'load-path "~/Documents/coding/elisp/haystack")
+(require 'haystack)
+(setq haystack-notes-directory "~/Documents/notes")
+(define-key global-map (kbd "C-c h") haystack-prefix-map)
+(which-key-add-key-based-replacements "C-c h" "haystack")
 
 ;; hledger
 (with-eval-after-load 'hledger-mode
@@ -277,6 +299,7 @@
 (setq bookmark-save-flag 1)
 (setq help-window-select t)
 (setq use-short-answers t)
+(setq read-extended-command-predicate #'command-completion-default-include-p)
 (setq which-key-idle-delay 0.5)
 (which-key-mode 1)
 
@@ -383,6 +406,8 @@
 ;;;; Custom Functions
 ;;;; ----------------
 
+(load-file "~/.emacs.d/wv-novel.el")
+
 (defun wv/org-show-two-levels ()
   "Show the first two levels of headings in the current Org buffer."
   (interactive)
@@ -407,6 +432,31 @@
   (interactive "sLanguage: ")
   (insert (format "#+begin_src %s\n\n#+end_src" lang))
   (forward-line -1))
+
+(defun wv/light-dark-toggle ()
+  "Toggle between light/dark version of Gruvbox Medium"
+  (interactive)
+  (let* ((old-theme (car custom-enabled-themes))
+	(new-theme (if (eq old-theme 'gruvbox-light-medium)
+		       'gruvbox-dark-medium
+		       'gruvbox-light-medium)))
+    (mapc #'disable-theme custom-enabled-themes)
+    (load-theme new-theme t)))
+
+(defun wv/anchor-elapsed ()
+  "Compute elapsed minutes between two hs: timestamps and insert below the second."
+  (interactive)
+  (save-excursion
+    (goto-char (point-min))
+    (if (re-search-forward "^hs: <\\([^>]+\\)>" nil t)
+        (let ((start-time (org-time-string-to-time (concat "<" (match-string 1) ">"))))
+          (if (re-search-forward "^hs: <\\([^>]+\\)>" nil t)
+              (let* ((end-time (org-time-string-to-time (concat "<" (match-string 1) ">")))
+                     (elapsed (round (/ (float-time (time-subtract end-time start-time)) 60))))
+                (end-of-line)
+                (insert (format "\nelapsed: %d" elapsed)))
+            (message "wv/anchor-elapsed: no second hs: timestamp found")))
+      (message "wv/anchor-elapsed: no hs: timestamp found"))))
 
 ;;;; ----------------
 ;;;; Language Support
@@ -498,4 +548,3 @@ Use prettier for `wv/prettier-modes', otherwise the eglot/LSP formatter."
 
 (add-hook 'prog-mode-hook #'wv/set-compile-command)
 (define-key prog-mode-map (kbd "C-c C-c c") #'compile)
-
