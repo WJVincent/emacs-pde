@@ -58,8 +58,17 @@
 
 (package-initialize)
 
-(unless (and (boundp 'package-archive-contents) package-archive-contents)
-  (package-refresh-contents))
+;; Refresh the package archive once, lazily, right before the first install of
+;; the session. Keeps startup fast when everything is already installed, but
+;; guarantees a fresh index whenever a package actually needs fetching — so a
+;; stale cache can't point `:ensure' at a tarball MELPA has already rebuilt.
+(defvar wv/package-refreshed nil
+  "Non-nil once `package-refresh-contents' has run this session.")
+
+(define-advice package-install (:before (&rest _) wv/refresh-once)
+  (unless wv/package-refreshed
+    (package-refresh-contents)
+    (setq wv/package-refreshed t)))
 
 (when (eq system-type 'gnu/linux)
   (setenv "SSH_AUTH_SOCK"
