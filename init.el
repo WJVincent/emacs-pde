@@ -9,9 +9,8 @@
 ;; logged to *Native-Compile-Log* but won't pop up *Warnings*.
 (setq native-comp-async-report-warnings-errors 'silent)
 
-;; Load custom file
+;; Load the custom file (only ever written by Customize) if it exists
 (setq custom-file "~/.emacs.d/custom.el")
-;; load the custom file after other packages
 (when (file-exists-p custom-file)
   (load custom-file))
 
@@ -26,6 +25,12 @@
               (if (derived-mode-p 'org-mode)
                   (apply orig-fn args)
                 (ignore))))
+
+;; Point ssh at the GNOME keyring agent on Linux (used by Magit/git over ssh)
+(when (eq system-type 'gnu/linux)
+  (setenv "SSH_AUTH_SOCK"
+          (format "/run/user/%d/gcr/ssh" (user-uid))))
+
 ;;;; ----------------
 ;;;; Tree-sitter
 ;;;; ----------------
@@ -46,7 +51,7 @@
 ;;;; Package Setup
 ;;;; ----------------
 
-;; Ensure portability between OS implementations
+;; Make sure package.el is available (at byte-compile time too)
 (eval-when-compile
   (require 'package))
 
@@ -69,10 +74,6 @@
   (unless wv/package-refreshed
     (package-refresh-contents)
     (setq wv/package-refreshed t)))
-
-(when (eq system-type 'gnu/linux)
-  (setenv "SSH_AUTH_SOCK"
-          (format "/run/user/%d/gcr/ssh" (user-uid))))
 
 ;;;; ----------------
 ;;;; Packages
@@ -157,9 +158,6 @@
   :hook (org-mode            . org-indent-mode)
   :hook (org-agenda-finalize . org-modern-agenda))
 
-;; C# — csharp-ts-mode is built-in (Emacs 29+); no external package needed
-(add-to-list 'auto-mode-alist '("\\.cs\\'" . csharp-ts-mode))
-
 ;; In-buffer autocompletion
 (use-package corfu
   :ensure t
@@ -171,18 +169,7 @@
   :init
   (global-corfu-mode))
 
-;; Rust
-(use-package rust-mode
-  :ensure t
-  :init
-  (setq rust-mode-treesitter-derive t)
-  :config
-  (add-hook 'rust-mode-hook    'eglot-ensure)
-  (add-hook 'rust-ts-mode-hook 'eglot-ensure)
-  (define-key rust-mode-map (kbd "C-c C-c r") 'rust-run)
-  (define-key rust-mode-map (kbd "C-c C-c t") 'rust-test))
-
-;; Better popup window management
+;; Better popup window management (see also `display-buffer-alist' below)
 (use-package popwin
   :ensure t
   :config
@@ -201,7 +188,7 @@
 (use-package vterm
   :ensure t
   :config
-  (add-to-list 'vterm-eval-cmds '("vterm-recenter-top" vterm-recenter-top)))
+  (add-to-list 'vterm-eval-cmds '("vterm-recenter-top" wv/vterm-recenter-top)))
 
 ;; Claude Code IDE integration
 (use-package claude-code-ide
@@ -218,25 +205,11 @@
 (use-package agent-shell
   :ensure t)
 
-;; Haystack — in-progress local project, only present on some machines
-(let ((haystack-dir "~/Documents/coding/elisp/haystack"))
-  (when (file-directory-p haystack-dir)
-    (add-to-list 'load-path haystack-dir)
-    (when (require 'haystack nil t)
-      (setq haystack-notes-directory "~/Documents/notes")
-      (define-key global-map (kbd "C-c h") haystack-prefix-map)
-      (which-key-add-key-based-replacements "C-c h" "haystack"))))
-
-;; hledger
-(with-eval-after-load 'hledger-mode
-  (require 'org nil t)
-  (require 'company nil t)
-  (require 'async nil t)
-  (require 'htmlize nil t))
-
+;; Expand selection by semantic units
 (use-package expand-region
   :ensure t
   :bind ("C-=" . er/expand-region))
+
 ;;;; ----------------
 ;;;; UI
 ;;;; ----------------
@@ -326,7 +299,7 @@
 ;; Add local info dir
 (add-to-list 'Info-directory-list "~/.info/")
 
-;; controls for popup buffers
+;; Side-window placement for sly-db (see also `popwin' config above)
 (setq display-buffer-alist
       '(("\\*sly-db.*\\*"
          (display-buffer-in-side-window)
@@ -349,6 +322,7 @@
 (global-set-key (kbd "C-c c")   'org-capture)
 (global-set-key (kbd "C-c B")   'ibuffer)
 (global-set-key (kbd "C-c d")   #'eldoc-doc-buffer)
+;; prot/keyboard-quit-dwim is defined under Custom Functions
 (define-key global-map (kbd "<escape>") 'prot/keyboard-quit-dwim)
 
 ;; Toggle between header and implementation file in C modes
@@ -369,10 +343,6 @@
 ;;;; Custom Functions
 ;;;; ----------------
 
-;; wv-novel — in-progress local project, only present on some machines
-(when (file-exists-p "~/.emacs.d/wv-novel.el")
-  (load-file "~/.emacs.d/wv-novel.el"))
-
 (defun wv/org-show-two-levels ()
   "Show the first two levels of headings in the current Org buffer."
   (interactive)
@@ -388,7 +358,7 @@
    (search-ring (setq search-ring nil))
    (t (keyboard-quit))))
 
-(defun vterm-recenter-top (&rest args)
+(defun wv/vterm-recenter-top (&rest args)
   "Recenter the vterm buffer to the top when called from the shell."
   (recenter 1))
 
@@ -427,21 +397,13 @@
 ;;;; Language Support
 ;;;; ----------------
 
-;; C# — use csharp-ls as the LSP server
+;;; Formatting & indentation (generic) ------------------------------
+
+;; C-c f formats and saves in every eglot-managed buffer.
 (with-eval-after-load 'eglot
-  (add-to-list 'eglot-server-programs
-               '((csharp-mode csharp-ts-mode) "csharp-ls"))
   (define-key eglot-mode-map (kbd "C-c f") #'wv/format-and-save))
 
-(defun wv/csharp-setup ()
-  (electric-pair-local-mode 1)
-  (eglot-ensure))
-
-(add-hook 'csharp-mode-hook    #'wv/csharp-setup)
-(add-hook 'csharp-ts-mode-hook #'wv/csharp-setup)
-
 ;; Formatting — prettier for web buffers, the language server elsewhere.
-;; Bound to C-c f in eglot-managed buffers (see the eglot block above).
 (defvar wv/prettier-modes
   '(js-mode js-ts-mode typescript-ts-mode tsx-ts-mode
     css-mode css-ts-mode scss-mode
@@ -495,18 +457,9 @@ Use prettier for `wv/prettier-modes', otherwise the eglot/LSP formatter."
 ;; apply. Built-in to Emacs 30 — no package needed.
 (editorconfig-mode 1)
 
-;; Web — JavaScript, HTML, CSS via eglot
-(setq major-mode-remap-alist
-      (append major-mode-remap-alist
-              '((javascript-mode . js-ts-mode)
-                (css-mode        . css-ts-mode)
-                (mhtml-mode      . html-ts-mode))))
+;;; Compilation (generic) -------------------------------------------
 
-(add-hook 'js-ts-mode-hook   #'eglot-ensure)
-(add-hook 'css-ts-mode-hook  #'eglot-ensure)
-(add-hook 'html-ts-mode-hook #'eglot-ensure)
-
-;; C-c C-c -> compile, with a filetype-aware default command.
+;; C-c C-c c -> compile, with a filetype-aware default command.
 (defvar wv/compile-commands
   '((js-ts-mode     . "node %s")
     (js-mode        . "node %s")
@@ -528,3 +481,63 @@ Use prettier for `wv/prettier-modes', otherwise the eglot/LSP formatter."
 
 (add-hook 'prog-mode-hook #'wv/set-compile-command)
 (define-key prog-mode-map (kbd "C-c C-c c") #'compile)
+
+;;; C# --------------------------------------------------------------
+
+;; csharp-ts-mode is built-in (Emacs 29+); no external package needed.
+(add-to-list 'auto-mode-alist '("\\.cs\\'" . csharp-ts-mode))
+
+;; Use csharp-ls as the LSP server.
+(with-eval-after-load 'eglot
+  (add-to-list 'eglot-server-programs
+               '((csharp-mode csharp-ts-mode) "csharp-ls")))
+
+(defun wv/csharp-setup ()
+  (electric-pair-local-mode 1)
+  (eglot-ensure))
+
+(add-hook 'csharp-mode-hook    #'wv/csharp-setup)
+(add-hook 'csharp-ts-mode-hook #'wv/csharp-setup)
+
+;;; Rust ------------------------------------------------------------
+
+;; Format on save via eglot/rustfmt; C-c C-c r/t to run/test.
+(use-package rust-mode
+  :ensure t
+  :init
+  (setq rust-mode-treesitter-derive t)
+  :config
+  (add-hook 'rust-mode-hook    'eglot-ensure)
+  (add-hook 'rust-ts-mode-hook 'eglot-ensure)
+  (define-key rust-mode-map (kbd "C-c C-c r") 'rust-run)
+  (define-key rust-mode-map (kbd "C-c C-c t") 'rust-test))
+
+;;; Web — JavaScript / HTML / CSS -----------------------------------
+
+(setq major-mode-remap-alist
+      (append major-mode-remap-alist
+              '((javascript-mode . js-ts-mode)
+                (css-mode        . css-ts-mode)
+                (mhtml-mode      . html-ts-mode))))
+
+(add-hook 'js-ts-mode-hook   #'eglot-ensure)
+(add-hook 'css-ts-mode-hook  #'eglot-ensure)
+(add-hook 'html-ts-mode-hook #'eglot-ensure)
+
+;;;; ----------------
+;;;; Local Projects
+;;;; ----------------
+;; In-progress projects I'm dogfooding; only loaded where they exist.
+
+;; Haystack — note-taking
+(let ((haystack-dir "~/Documents/coding/elisp/haystack"))
+  (when (file-directory-p haystack-dir)
+    (add-to-list 'load-path haystack-dir)
+    (when (require 'haystack nil t)
+      (setq haystack-notes-directory "~/Documents/notes")
+      (define-key global-map (kbd "C-c h") haystack-prefix-map)
+      (which-key-add-key-based-replacements "C-c h" "haystack"))))
+
+;; wv-novel — novel-writing tooling
+(when (file-exists-p "~/.emacs.d/wv-novel.el")
+  (load-file "~/.emacs.d/wv-novel.el"))
