@@ -471,6 +471,21 @@ Use prettier for `wv/prettier-modes', otherwise the eglot/LSP formatter."
     (eglot-format-buffer))
   (save-buffer))
 
+;; Indentation widths — match prettier's defaults (tabWidth 2, spaces) so
+;; interactive reindentation doesn't fight `wv/format-and-save'. These are the
+;; generic fallback; a project `.editorconfig' overrides them when present
+;; (via the built-in editorconfig-mode below), and prettier reads that same
+;; file, so the two never disagree.
+(setq-default js-indent-level              2  ; js-mode, js-ts-mode
+              typescript-ts-mode-indent-offset 2
+              json-ts-mode-indent-offset   2
+              css-indent-offset            2  ; css-mode, css-ts-mode, scss
+              indent-tabs-mode             nil) ; spaces, matching useTabs:false
+
+;; Honor .editorconfig when a project ships one; otherwise the defaults above
+;; apply. Built-in to Emacs 30 — no package needed.
+(editorconfig-mode 1)
+
 ;; Web — JavaScript, HTML, CSS via eglot
 (setq major-mode-remap-alist
       (append major-mode-remap-alist
