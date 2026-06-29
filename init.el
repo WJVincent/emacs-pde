@@ -164,7 +164,13 @@
   :defer t
   :hook (emacs-lisp-mode       . paredit-mode)
   :hook (lisp-interaction-mode . paredit-mode)
-  :hook (lisp-mode             . paredit-mode))
+  :hook (lisp-mode             . paredit-mode)
+  :config
+  ;; paredit binds M-s to paredit-splice-sexp, which shadows the M-s search
+  ;; prefix (and our consult M-s l/r/g chords) in Lisp buffers. Free up M-s
+  ;; and relocate splice to C-c s.
+  (define-key paredit-mode-map (kbd "M-s") nil)
+  (define-key paredit-mode-map (kbd "C-c s") #'paredit-splice-sexp))
 
 ;; Common Lisp IDE
 (use-package sly
